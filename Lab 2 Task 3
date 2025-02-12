@@ -10,6 +10,7 @@ int main()
     DigitalIn overTempDetector(D3);
 
     // Buttons for deactivating the alarm
+    DigitalIn enterButton(BUTTON1);
     DigitalIn aButton(D4);
     DigitalIn bButton(D5);
     DigitalIn cButton(D6);
@@ -26,24 +27,23 @@ int main()
     cButton.mode(PullDown);
     dButton.mode(PullDown);
 
-    alarmLed = OFF;  // Alarm LED starts OFF
+    alarmLed = OFF;  // Start with alarm LED off
 
     // Alarm state variables
     bool alarmState = OFF;
     bool flashingMode = false;  // Track if we should keep flashing
 
     while (true) {
-        // Check if either detector is pressed
+        // Check if either detector is triggered
         if (gasDetector || overTempDetector) {
             alarmState = ON;  // Activate alarm
         }
-
-        // Check if both detectors are pressed
+        // Check if both detectors are triggered simultaneously
         if (gasDetector && overTempDetector) {
             flashingMode = true;  // Enable flashing mode
         }
 
-        // If emergency mode is active, keep flashing
+        // If flashing mode is active, keep flashing
         if (flashingMode) {
             alarmLed = !alarmLed;  // Toggle LED state
             ThisThread::sleep_for(BLINKING_RATE);  // Control blink rate
@@ -55,11 +55,12 @@ int main()
             alarmLed = OFF;
         }
 
-        // Deactivate alarm with 4 digit code (aButton + bButton)
-        if (aButton && bButton && !cButton && !dButton) {
+        // Deactivate alarm with correct 4 digit button code (aButton + bButton + cButton + !dButton)
+        if (aButton && bButton && enterButton) {
             alarmState = OFF;   // Reset alarm state
             flashingMode = false; // Stop flashing mode
             alarmLed = OFF;     // Turn off the LED
         }
     }
 }
+
