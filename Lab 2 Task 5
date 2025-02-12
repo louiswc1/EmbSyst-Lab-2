@@ -1,10 +1,11 @@
 #include "mbed.h"
 
-#define BLOCKING_TIME 60s  // System locks for 60 seconds
-#define BLINKING_RATE 500ms // LED2 blinking interval
+#define BLOCKING_TIME 60s  // The System locks for 60 seconds
+#define BLINKING_RATE 500ms // System Lock (LED2) blink rate during system lock
 
 int main()
 {
+    //Declare input variables
     DigitalIn enterButton(BUTTON1);
     DigitalIn gasDetector(D2);
     DigitalIn overTempDetector(D3);
@@ -13,6 +14,7 @@ int main()
     DigitalIn cButton(D6);
     DigitalIn dButton(D7);
 
+//Declare output variables
     DigitalOut alarmLed(LED1);
     DigitalOut incorrectCodeLed(LED3);
     DigitalOut systemBlockedLed(LED2);
@@ -24,47 +26,71 @@ int main()
     cButton.mode(PullDown);
     dButton.mode(PullDown);
 
+//Declare base states for output variables
     alarmLed = 0;
     incorrectCodeLed = 0;
     systemBlockedLed = 0;
 
+//Start of boolean variables
     bool alarmState = false;
+    bool flashingMode = false;
     int numberOfIncorrectCodes = 0;
     bool systemBlocked = false;
 
     while (true) {
-
-        if (gasDetector || overTempDetector) { // If statement for when one or the other detectors is activated, alarm stays
+        if (gasDetector || overTempDetector) { // If one or the other detector is activated alarm is activated and remains on.
             alarmState = true;
         }
 
-        alarmLed = alarmState;
+        if (gasDetector && overTempDetector) { // If both detectors are activated alarm activates and flashes in Emergency Mode.
+            flashingMode = true;
+        }
+
+        if (flashingMode) {
+            while (flashingMode) {
+                alarmLed = !alarmLed; // Toggle LED1 on and off
+                ThisThread::sleep_for(BLINKING_RATE);
+                
+                // Stop the alarm flashing when the correct code is entered
+                if (aButton && bButton && !cButton && !dButton && enterButton) {
+                    flashingMode = false;
+                    alarmState = false;
+                    alarmLed = 0;
+                    incorrectCodeLed = 0;
+                    numberOfIncorrectCodes = 0;
+                    break;
+                }
+            }
+        } else {
+            alarmLed = alarmState;
+        }
 
         if (systemBlocked) {
-            // Blink LED2 while system is locked
             for (int i = 0; i < (BLOCKING_TIME / BLINKING_RATE); i++) {
-                systemBlockedLed = !systemBlockedLed; // Toggle LED2
+                systemBlockedLed = !systemBlockedLed; // Toggle LED2 on and off during system lock
                 ThisThread::sleep_for(BLINKING_RATE);
             }
-            systemBlockedLed = 0; // Turn off LED2 after blocking time
-            systemBlocked = false;  // Unlock the system
-            numberOfIncorrectCodes = 0;  // Reset incorrect attempts
+            systemBlockedLed = 0;
+            systemBlocked = false;
+            numberOfIncorrectCodes = 0;
         } 
         else {
-            if ( aButton && bButton && cButton && dButton && !enterButton ) {
-                incorrectCodeLed = 0;  // Reset incorrect code LED when all buttons are pressed
+            if (aButton && bButton && cButton && dButton && !enterButton) {
+                incorrectCodeLed = 0; // Reset incorrect code (LED3) when all four input buttons (a-d) are pressed
             }
 
-            if ( enterButton && !incorrectCodeLed && alarmState) {
-                if ( aButton && bButton && !cButton && !dButton ) {
+            if (enterButton && !incorrectCodeLed && alarmState) {
+                if (aButton && bButton && !cButton && !dButton) {
                     alarmState = false;
-                    numberOfIncorrectCodes = 0;  // Reset incorrect attempts on correct code
+                    flashingMode = false;
+                    alarmLed = 0;
+                    numberOfIncorrectCodes = 0;
                 } else {
                     incorrectCodeLed = 1;
                     numberOfIncorrectCodes++;
 
                     if (numberOfIncorrectCodes >= 5) {
-                        systemBlocked = true;  // Activate system block
+                        systemBlocked = true;
                     }
                 }
             }
