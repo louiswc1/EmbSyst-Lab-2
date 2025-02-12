@@ -3,9 +3,11 @@
 
 int main()
 {
+   //gas detector bound to button D2, overtemp detector bound to D3 
    DigitalIn gasDetector(D2);
    DigitalIn overTempDetector(D3);
    
+   //LED1 represents the alarm in the smart home system
    DigitalOut alarmLed(LED1);
    
    gasDetector.mode(PullDown);   
