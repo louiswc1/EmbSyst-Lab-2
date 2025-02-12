@@ -1,1 +1,73 @@
+#include "mbed.h"
 
+#define BLOCKING_TIME 60s  // System locks for 60 seconds
+#define BLINKING_RATE 500ms // LED2 blinking interval
+
+int main()
+{
+    DigitalIn enterButton(BUTTON1);
+    DigitalIn gasDetector(D2);
+    DigitalIn overTempDetector(D3);
+    DigitalIn aButton(D4);
+    DigitalIn bButton(D5);
+    DigitalIn cButton(D6);
+    DigitalIn dButton(D7);
+
+    DigitalOut alarmLed(LED1);
+    DigitalOut incorrectCodeLed(LED3);
+    DigitalOut systemBlockedLed(LED2);
+
+    gasDetector.mode(PullDown);
+    overTempDetector.mode(PullDown);
+    aButton.mode(PullDown);
+    bButton.mode(PullDown);
+    cButton.mode(PullDown);
+    dButton.mode(PullDown);
+
+    alarmLed = 0;
+    incorrectCodeLed = 0;
+    systemBlockedLed = 0;
+
+    bool alarmState = false;
+    int numberOfIncorrectCodes = 0;
+    bool systemBlocked = false;
+
+    while (true) {
+
+        if (gasDetector || overTempDetector) { // If statement for when one or the other detectors is activated, alarm stays
+            alarmState = true;
+        }
+
+        alarmLed = alarmState;
+
+        if (systemBlocked) {
+            // Blink LED2 while system is locked
+            for (int i = 0; i < (BLOCKING_TIME / BLINKING_RATE); i++) {
+                systemBlockedLed = !systemBlockedLed; // Toggle LED2
+                ThisThread::sleep_for(BLINKING_RATE);
+            }
+            systemBlockedLed = 0; // Turn off LED2 after blocking time
+            systemBlocked = false;  // Unlock the system
+            numberOfIncorrectCodes = 0;  // Reset incorrect attempts
+        } 
+        else {
+            if ( aButton && bButton && cButton && dButton && !enterButton ) {
+                incorrectCodeLed = 0;  // Reset incorrect code LED when all buttons are pressed
+            }
+
+            if ( enterButton && !incorrectCodeLed && alarmState) {
+                if ( aButton && bButton && !cButton && !dButton ) {
+                    alarmState = false;
+                    numberOfIncorrectCodes = 0;  // Reset incorrect attempts on correct code
+                } else {
+                    incorrectCodeLed = 1;
+                    numberOfIncorrectCodes++;
+
+                    if (numberOfIncorrectCodes >= 5) {
+                        systemBlocked = true;  // Activate system block
+                    }
+                }
+            }
+        }
+    }
+}
