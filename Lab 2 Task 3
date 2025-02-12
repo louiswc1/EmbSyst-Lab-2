@@ -5,17 +5,17 @@
 
 int main()
 {
-    //gasDetector bound to button D2, overTempDetector bound to button D3 
+    // gasDetector bound to button D2, overTempDetector bound to button D3
     DigitalIn gasDetector(D2);
     DigitalIn overTempDetector(D3);
 
-    //Assigning a variable name to our buttons that will be used in the 4 digit code
+    // Assigning a variable name to our buttons for the 4-digit code
     DigitalIn aButton(D4);
     DigitalIn bButton(D5);
     DigitalIn cButton(D6);
     DigitalIn dButton(D7);
 
-//LED1 represents the alarm in the smart home system
+    // LED1 represents the alarm in the smart home system
     DigitalOut alarmLed(LED1);
 
     gasDetector.mode(PullDown);
@@ -25,28 +25,42 @@ int main()
     cButton.mode(PullDown);
     dButton.mode(PullDown);
 
-    alarmLed = OFF;
+    alarmLed = OFF;  // Start with the alarm LED off
 
-//Start of boolean variable > Initial alarm state = OFF
+    // Initial alarm state = OFF
     bool alarmState = OFF;
+    bool bothDetectorsActive = false;  // Track if both detectors are active
 
     while (true) {
-
-        if ( gasDetector || overTempDetector ) {
-            alarmState = ON;
+        
+        // Check if either of the detectors is active
+        if (gasDetector || overTempDetector) {
+            alarmState = ON;  // Set alarm state to ON if either detector is triggered
         }
 
-//if statement to activate emergency flashing alarm
-if ( gasDetector && overTempDetector) {
-            alarmState = !alarmState;
-            ThisThread::sleep_for(BLINKING_RATE);
+        // If both detectors are activated simultaneously, flash the LED
+        if (gasDetector && overTempDetector) {
+            bothDetectorsActive = true;  // Both detectors are active
+        } else {
+            bothDetectorsActive = false;  // At least one detector is inactive
+        }
+
+        // Flash the LED when both detectors are active
+        if (bothDetectorsActive) {
+            alarmLed = !alarmLed;  // Toggle the LED (flash)
+            ThisThread::sleep_for(BLINKING_RATE);  // Control the blink rate
+        } else if (alarmState == ON) {
+            // If alarmState is ON but not both detectors, keep the LED solid
             alarmLed = ON;
+        } else {
+            // If alarmState is OFF, ensure the LED is off
+            alarmLed = OFF;
         }
-        alarmLed = alarmState;
 
-//Setting the 4 digit (4 button) code to de-activate the alarm
-        if ( aButton && bButton && !cButton && !dButton) {
-            alarmState = OFF;
+        // Deactivate alarm with the correct button code (aButton + bButton)
+        if (aButton && bButton && !cButton && !dButton) {
+            alarmState = OFF;  // Turn off alarm state
+            alarmLed = OFF;    // Turn off the alarm LED
         }
     }
 }
