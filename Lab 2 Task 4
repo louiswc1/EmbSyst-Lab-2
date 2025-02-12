@@ -1,7 +1,7 @@
 #include "mbed.h"
 #include "arm_book_lib.h"
 
-#define BLINKING_RATE 6000ms
+#define BLOCKING_TIME 60s  // This defines the amount of time the system locks for being 60 seconds
 
 int main()
 {
@@ -30,6 +30,7 @@ int main()
 
     bool alarmState = OFF;
     int numberOfIncorrectCodes = 0;
+    bool systemBlocked = false;
 
     while (true) {
 
@@ -39,26 +40,31 @@ int main()
 
         alarmLed = alarmState;
 
-        if ( numberOfIncorrectCodes < 5 ) {
-            
+        if (systemBlocked) {
+            systemBlockedLed = ON;  // Indicate system is blocked
+            ThisThread::sleep_for(BLOCKING_TIME);  // Lock for 60 seconds
+            systemBlockedLed = OFF;
+            systemBlocked = false;  // Unlock the system
+            numberOfIncorrectCodes = 0;  // Resets incorrect attempts
+        } 
+        else {
             if ( aButton && bButton && cButton && dButton && !enterButton ) {
-                incorrectCodeLed = OFF;
+                incorrectCodeLed = OFF;  // Reset incorrect code LED3 when all buttons are pressed
             }
 
             if ( enterButton && !incorrectCodeLed && alarmState) {
                 if ( aButton && bButton && !cButton && !dButton ) {
                     alarmState = OFF;
-                    numberOfIncorrectCodes = 0;
+                    numberOfIncorrectCodes = 0;  // Reset incorrect attempts on correct code
                 } else {
                     incorrectCodeLed = ON;
-                    numberOfIncorrectCodes = numberOfIncorrectCodes + 1;
+                    numberOfIncorrectCodes++;
+
+                    if (numberOfIncorrectCodes >= 5) {
+                        systemBlocked = true;  // Activates system block
+                    }
                 }
             }
-        } else {
-            systemBlockedLed = ON;
-            ThisThread::sleep_for(BLINKING_RATE);
-            systemBlockedLed = OFF;
-
         }
     }
 }
