@@ -1,18 +1,20 @@
 #include "mbed.h"
 #include "arm_book_lib.h"
 
-#define BLOCKING_TIME 60s  // This defines the amount of time the system locks for being 60 seconds
+#define BLINKING_RATE     500ms
 
 int main()
 {
-    DigitalIn enterButton(BUTTON1);
+    //Declare input variables
     DigitalIn gasDetector(D2);
     DigitalIn overTempDetector(D3);
+    DigitalIn enterButton(BUTTON1);
     DigitalIn aButton(D4);
     DigitalIn bButton(D5);
     DigitalIn cButton(D6);
     DigitalIn dButton(D7);
 
+    //Declare output variables
     DigitalOut alarmLed(LED1);
     DigitalOut incorrectCodeLed(LED3);
     DigitalOut systemBlockedLed(LED2);
@@ -24,47 +26,74 @@ int main()
     cButton.mode(PullDown);
     dButton.mode(PullDown);
 
+//Declare base states for output variables
     alarmLed = OFF;
     incorrectCodeLed = OFF;
     systemBlockedLed = OFF;
 
+    //Start of boolean variables
     bool alarmState = OFF;
-    int numberOfIncorrectCodes = 0;
-    bool systemBlocked = false;
+    bool flashingMode = false;
+    int incorrectAttempts = 0;
 
     while (true) {
-
-        if ( gasDetector || overTempDetector ) {
+        // Check if either detector is triggered
+        if (gasDetector || overTempDetector) {
             alarmState = ON;
         }
 
-        alarmLed = alarmState;
+        // If both detectors are activated alarm activates and flashes in Emergency Mode.
+        if (gasDetector && overTempDetector) {
+            flashingMode = true;
+        }
 
-        if (systemBlocked) {
-            systemBlockedLed = ON;  // Indicate system is blocked
-            ThisThread::sleep_for(BLOCKING_TIME);  // Lock for 60 seconds
-            systemBlockedLed = OFF;
-            systemBlocked = false;  // Unlock the system
-            numberOfIncorrectCodes = 0;  // Resets incorrect attempts
-        } 
-        else {
-            if ( aButton && bButton && cButton && dButton && !enterButton ) {
-                incorrectCodeLed = OFF;  // Reset incorrect code LED3 when all buttons are pressed
-            }
-
-            if ( enterButton && !incorrectCodeLed && alarmState) {
-                if ( aButton && bButton && !cButton && !dButton ) {
+        // If flashing mode is active, keep flashing
+        if (flashingMode) {
+            while (flashingMode) {
+                alarmLed = !alarmLed;
+                ThisThread::sleep_for(BLINKING_RATE);
+                // Ensure flashing mode remains active until correct code is entered
+                if (aButton && bButton && enterButton) {
+                    flashingMode = false;
                     alarmState = OFF;
-                    numberOfIncorrectCodes = 0;  // Reset incorrect attempts on correct code
-                } else {
-                    incorrectCodeLed = ON;
-                    numberOfIncorrectCodes++;
-
-                    if (numberOfIncorrectCodes >= 5) {
-                        systemBlocked = true;  // Activates system block
-                    }
+                    alarmLed = OFF;
+                    incorrectAttempts = 0;
+                    incorrectCodeLed = OFF;
+                    systemBlockedLed = OFF;
+                    break;
                 }
             }
+        } else if (alarmState == ON) {
+            alarmLed = ON;
+        } else {
+            alarmLed = OFF;
+        }
+
+        // Stop the alarm when the correct code is entered
+        if (aButton && bButton && enterButton) {
+            alarmState = OFF;
+            flashingMode = false;
+            alarmLed = OFF;
+            incorrectAttempts = 0;
+            incorrectCodeLed = OFF;
+            systemBlockedLed = OFF;
+            continue; // Skip the rest of the loop to prevent incorrect attempt counting
+        } 
+        // Incorrect code entry (only if system is not blocked and the correct code isn't being entered)
+        else if (!systemBlockedLed && (aButton || bButton || enterButton)) {
+            incorrectCodeLed = ON;
+            incorrectAttempts++;
+        }
+
+        // Reset incorrect attempts when all four buttons are pressed simultaneously
+        if (aButton && bButton && cButton && dButton) {
+            incorrectAttempts = 0;
+            incorrectCodeLed = OFF;
+        }
+
+        // Block system on fifth incorrect attempt
+        if (incorrectAttempts >= 5) {
+            systemBlockedLed = ON;
         }
     }
 }
