@@ -1,1 +1,44 @@
+#include "mbed.h"
+#include "arm_book_lib.h"
 
+int main()
+{
+    //gasDetector bound to button D2, overTempDetector bound to button D3 
+    DigitalIn gasDetector(D2);
+    DigitalIn overTempDetector(D3);
+
+    //Assigning a variable name to our buttons that will be used in the 4 digit code
+    DigitalIn aButton(D4);
+    DigitalIn bButton(D5);
+    DigitalIn cButton(D6);
+    DigitalIn dButton(D7);
+
+//LED1 represents the alarm in the smart home system
+    DigitalOut alarmLed(LED1);
+
+    gasDetector.mode(PullDown);
+    overTempDetector.mode(PullDown);
+    aButton.mode(PullDown);
+    bButton.mode(PullDown);
+    cButton.mode(PullDown);
+    dButton.mode(PullDown);
+
+    alarmLed = OFF;
+
+//Start of boolean variable > Initial alarm state = OFF
+    bool alarmState = OFF;
+
+    while (true) {
+
+        if ( gasDetector || overTempDetector ) {
+            alarmState = ON;
+        }
+
+        alarmLed = alarmState;
+
+//Setting the 4 digit (4 button) code to de-activate the alarm
+        if ( aButton && bButton && !cButton && !dButton) {
+            alarmState = OFF;
+        }
+    }
+}
