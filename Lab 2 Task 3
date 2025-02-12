@@ -1,6 +1,8 @@
 #include "mbed.h"
 #include "arm_book_lib.h"
 
+#define BLINKING_RATE     500ms
+
 int main()
 {
     //gasDetector bound to button D2, overTempDetector bound to button D3 
@@ -34,6 +36,12 @@ int main()
             alarmState = ON;
         }
 
+//if statement to activate emergency flashing alarm
+if ( gasDetector && overTempDetector) {
+            alarmState = !alarmState;
+            ThisThread::sleep_for(BLINKING_RATE);
+            alarmLed = ON;
+        }
         alarmLed = alarmState;
 
 //Setting the 4 digit (4 button) code to de-activate the alarm
